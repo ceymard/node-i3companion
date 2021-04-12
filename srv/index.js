@@ -113,12 +113,6 @@ class Display {
       let url = 'file:///' + pth.join(__dirname, '../ui/index.html')
       // console.log(url)
       this.webview.loadUri(url)
-      this.webview.on('load-changed', (ev, ev2, ev3) => {
-        if (ev === 3) {
-          this.webview.runJavascript(src)
-        }
-        // console.log(ev, ev2, ev3)
-      })
     }
 
   }
