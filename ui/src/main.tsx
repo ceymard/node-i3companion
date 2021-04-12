@@ -9,6 +9,8 @@ import { Styling as S, rule, style } from 'elt-ui'
 
 import { ConApp, GeomNode, Root, WindowEvent, Workspace, WorkspaceEvent } from './types'
 
+
+
 // Things to implement
 // input module
 // input with fuzzy choices
@@ -328,7 +330,7 @@ window.i3msg = function i3msg(kind: 'window' | 'binding' | 'workspace' | 'output
   // console.log('msg', JSON.stringify(msg))
   if (!msg) return
 
-  console.log(kind, msg.change, msg)
+  // console.log(kind, msg.change, msg)
   if (kind === 'window') {
     const _m = msg as WindowEvent
     if (_m.change === 'focus') {
@@ -337,7 +339,7 @@ window.i3msg = function i3msg(kind: 'window' | 'binding' | 'workspace' | 'output
       update_tree()
     }
   } else if (kind === 'binding') {
-    console.log('???')
+    // console.log('???')
     let command = msg.binding.command as string
     for (let c of com.commands) {
       let m = c.r.exec(command)
@@ -418,7 +420,7 @@ function init() {
     </div>)}
     {$click(_ => {
       // o_current.set('POUET');
-      query().then(r => console.log('result: ', r))
+      // query().then(r => console.log('result: ', r))
     })}
     <div class={S.flex.absoluteGrow(1)}>
       « {o_current_window.tf(w => {

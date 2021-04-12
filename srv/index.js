@@ -81,7 +81,9 @@ class Display {
       const manager = this.webview.getUserContentManager()
 
       manager.on('script-message-received::external', (recv) => {
-        const val = JSON.parse(recv.getJsValue().toJson(0))
+        let v = recv.getJsValue()
+        let val = JSON.parse(v.toJson(0))
+        v.unref()
         // console.log(val)
         this.handleRpc(val)
       })
@@ -96,20 +98,24 @@ class Display {
       this.window.showAll()
     }
 
-    this.initJs()
+    // this.initJs()
 
     const settings = this.webview.getSettings()
+    // We want to enable local file access in XHR and of course images.
     settings.setAllowFileAccessFromFileUrls(true)
     settings.setAllowUniversalAccessFromFileUrls(true)
+    settings.setJavascriptCanAccessClipboard(true)
     if (DEBUG) {
       // enable developer console if DEBUG flag is passed on the command line
       settings.setEnableWriteConsoleMessagesToStdout(true)
       settings.setEnableDeveloperExtras(true)
+      let insp = this.webview.getInspector()
+      insp.show()
     }
 
+    this.initJs()
     if (!related) {
       // run the initial client code
-
       let url = 'file:///' + pth.join(__dirname, '../ui/index.html')
       // console.log(url)
       this.webview.loadUri(url)
@@ -162,11 +168,14 @@ class Display {
       disp.reply(data.id, null, `no such command ${data.cmd}`)
     }
     //
+    // global?.gc?.()
   }
 
   initJs() {
     this.webview.runJavascript(`
       (function () {
+          window.display_id = ${this.display_id}
+        console.log('HELLO ')
             let id = 0
             let display_id = ${this.display_id}
             let replies = new Map()
@@ -175,6 +184,7 @@ class Display {
             let __rpc = window.__rpc = function (cmd, args) {
                 id++
                 __ext.postMessage({cmd, args, id: id, display_id: display_id})
+                // __ext.postMessage({size: replies.size})
                 return new Promise(function (accept, reject) { replies.set(id, {accept: accept, reject: reject}) })
             }
 
