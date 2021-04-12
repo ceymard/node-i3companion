@@ -98,21 +98,29 @@ class Display {
 
     this.initJs()
 
-    if (!related) {
-      // run the initial client code
-      this.webview.runJavascript(src)
-
-      // let url = 'file://' + pth.join(__dirname, '../ui/index.html')
-      // console.log(url)
-      // this.webview.loadUri(url)
-    }
-
+    const settings = this.webview.getSettings()
+    settings.setAllowFileAccessFromFileUrls(true)
+    settings.setAllowUniversalAccessFromFileUrls(true)
     if (DEBUG) {
       // enable developer console if DEBUG flag is passed on the command line
-      const settings = this.webview.getSettings()
       settings.setEnableWriteConsoleMessagesToStdout(true)
       settings.setEnableDeveloperExtras(true)
     }
+
+    if (!related) {
+      // run the initial client code
+
+      let url = 'file:///' + pth.join(__dirname, '../ui/index.html')
+      // console.log(url)
+      this.webview.loadUri(url)
+      this.webview.on('load-changed', (ev, ev2, ev3) => {
+        if (ev === 3) {
+          this.webview.runJavascript(src)
+        }
+        // console.log(ev, ev2, ev3)
+      })
+    }
+
   }
 
   floatCenter() {

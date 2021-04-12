@@ -9,3 +9,4 @@ gi.startLoop()
 // Necessary to initialize the graphic environment.
 // If this fails it means the host cannot show Gtk-3.0
 Gtk.init()
+console.log(WebKit2)

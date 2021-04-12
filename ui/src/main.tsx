@@ -48,7 +48,6 @@ const cls_bar = style('bar',
   { padding: '0 4px' },
 )
 
-setup_mutation_observer(document.body)
 
 const o_current_window = o(null as GeomNode | null)
 const o_current_workspace = o(null as Workspace | null)
@@ -385,52 +384,53 @@ setInterval(() => {
   o_time.set(new Date)
 }, 1000)
 
-document.body.appendChild(<div class={cls_bar}>
-  {$observe(o_current_group, (current, old) => {
-    if (old === o.NoValue) return
-    group_rename(old, current)
-  })}
-  {Repeat(o_groups_display, o_group => <div class={S.flex.row.alignCenter}>
-    <div><span>{o_group.p('name')}</span></div>
-    {Repeat(o_group.p('works'), o_work => <div
-      class={S.box.padding(2).borderRound.border('#5c5b5c').text.centered}
-      style={{
-        width: '42px',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'pre',
-        background: o_work.tf(w => w.urgent ? 'red' : w.visible ? '#4c3d7c' : 'none')
-      }}>
-        {$click(async _ => {
-          try {
-            // console.log(`workspace "${o_work.get().name}"`)
-            i3(`workspace ${o_work.get().name}`)
-          } catch (e) {
-            console.error(e)
-          }
-          _.stopPropagation()
+function init() {
+  setup_mutation_observer(document.body)
 
-        })}
-        {o_work.p('name')}
+  document.body.appendChild(<div class={cls_bar}>
+    {$observe(o_current_group, (current, old) => {
+      if (old === o.NoValue) return
+      group_rename(old, current)
+    })}
+    {Repeat(o_groups_display, o_group => <div class={S.flex.row.alignCenter}>
+      <div><span>{o_group.p('name')}</span></div>
+      {Repeat(o_group.p('works'), o_work => <div
+        class={S.box.padding(2).borderRound.border('#5c5b5c').text.centered}
+        style={{
+          width: '42px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'pre',
+          background: o_work.tf(w => w.urgent ? 'red' : w.visible ? '#4c3d7c' : 'none')
+        }}>
+          {$click(async _ => {
+            try {
+              // console.log(`workspace "${o_work.get().name}"`)
+              i3(`workspace ${o_work.get().name}`)
+            } catch (e) {
+              console.error(e)
+            }
+            _.stopPropagation()
+
+          })}
+          {o_work.p('name')}
+      </div>)}
     </div>)}
-  </div>)}
-  {$click(_ => {
-    // o_current.set('POUET');
-    query().then(r => console.log('result: ', r))
-  })}
-  <div class={S.flex.absoluteGrow(1)}>
-    « {o_current_window.tf(w => {
-      // console.log('current : ', w)
-      // __rpc('???', w?.name)
-      return w?.name ?? '-'
-    })} »
-  </div>
-  <img src="file:///usr/share/krita/patterns/Stars_Sized.png" width="32" height="32"></img>
-  <div>{I('calendar-alt-regular')} {o_time.tf(t => dt.format(t))}</div>
-</div>)
-setTimeout(async () => {
-
-}, 10)
+    {$click(_ => {
+      // o_current.set('POUET');
+      query().then(r => console.log('result: ', r))
+    })}
+    <div class={S.flex.absoluteGrow(1)}>
+      « {o_current_window.tf(w => {
+        // console.log('current : ', w)
+        // __rpc('???', w?.name)
+        return w?.name ?? '-'
+      })} »
+    </div>
+    <img src="file:///home/chris/swapp/apps/1811-ipsen-engagements/__dist__/client/android-icon-144x144.png" width="32" height="32"></img>
+    <div>{I('calendar-alt-regular')} {o_time.tf(t => dt.format(t))}</div>
+  </div>)
+}
 
 
 // window.__rpc('show')
@@ -439,3 +439,6 @@ setTimeout(async () => {
 // }, 1000)
 update_tree()
 workspaces_focus_init()
+requestAnimationFrame(() => {
+  init()
+})
