@@ -1,0 +1,9 @@
+{
+	"name": "i3companion",
+	"private": true,
+	"dependencies": {
+		"i3": "^0.3.0",
+		"node-gtk": "^0.8.1",
+		"systeminformation": "^5.6.12"
+	}
+}
