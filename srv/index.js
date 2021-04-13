@@ -83,6 +83,8 @@ class Display {
       manager.on('script-message-received::external', (recv) => {
         let v = recv.getJsValue()
         let val = JSON.parse(v.toJson(0))
+        // This is important, we want to allow js from collecting this value since it seems node-gtk does not do so
+        // automatically
         v.unref()
         // console.log(val)
         this.handleRpc(val)
@@ -105,16 +107,17 @@ class Display {
     settings.setAllowFileAccessFromFileUrls(true)
     settings.setAllowUniversalAccessFromFileUrls(true)
     settings.setJavascriptCanAccessClipboard(true)
-    if (DEBUG) {
-      // enable developer console if DEBUG flag is passed on the command line
-      settings.setEnableWriteConsoleMessagesToStdout(true)
-      settings.setEnableDeveloperExtras(true)
-      let insp = this.webview.getInspector()
-      insp.show()
-    }
 
     this.initJs()
     if (!related) {
+      if (DEBUG) {
+        // enable developer console if DEBUG flag is passed on the command line
+        settings.setEnableWriteConsoleMessagesToStdout(true)
+        settings.setEnableDeveloperExtras(true)
+        let insp = this.webview.getInspector()
+        insp.show()
+      }
+
       // run the initial client code
       let url = 'file:///' + pth.join(__dirname, '../ui/index.html')
       // console.log(url)
@@ -174,31 +177,29 @@ class Display {
   initJs() {
     this.webview.runJavascript(`
       (function () {
-          window.display_id = ${this.display_id}
-        console.log('HELLO ')
-            let id = 0
-            let display_id = ${this.display_id}
-            let replies = new Map()
-            let __ext = window.webkit.messageHandlers.external
-            window.i3msg = function () { }
-            let __rpc = window.__rpc = function (cmd, args) {
-                id++
-                __ext.postMessage({cmd, args, id: id, display_id: display_id})
-                // __ext.postMessage({size: replies.size})
-                return new Promise(function (accept, reject) { replies.set(id, {accept: accept, reject: reject}) })
-            }
+        let id = 0
+        let display_id = ${this.display_id}
+        let replies = new Map()
+        let __ext = window.webkit.messageHandlers.external
+        window.i3msg = function () { }
+        let __rpc = window.__rpc = function (cmd, args) {
+            id++
+            __ext.postMessage({cmd, args, id: id, display_id: display_id})
+            // __ext.postMessage({size: replies.size})
+            return new Promise(function (accept, reject) { replies.set(id, {accept: accept, reject: reject}) })
+        }
 
-            window.__rpc_reply = function (id, res, err) {
-                let r = replies.get(id)
-                if (!r) { console.error('could not get accept/reject for ', id); return }
-                replies.delete(id)
-                if (err != null) { return r.reject(err) }
-                return r.accept(res)
-            }
-            window.__show = function () { __rpc('show') }
-            window.__hide = function () { __rpc('hide') }
-            if (window.__init) window.__init()
-        })()
+        window.__rpc_reply = function (id, res, err) {
+            let r = replies.get(id)
+            if (!r) { console.error('could not get accept/reject for ', id); return }
+            replies.delete(id)
+            if (err != null) { return r.reject(err) }
+            return r.accept(res)
+        }
+        window.__show = function () { __rpc('show') }
+        window.__hide = function () { __rpc('hide') }
+        if (window.__init) window.__init()
+      })()
     `)
   }
 

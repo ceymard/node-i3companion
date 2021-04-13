@@ -9,8 +9,6 @@ import { Styling as S, rule, style } from 'elt-ui'
 
 import { ConApp, GeomNode, Root, WindowEvent, Workspace, WorkspaceEvent } from './types'
 
-
-
 // Things to implement
 // input module
 // input with fuzzy choices
@@ -136,19 +134,28 @@ function focus_nth_window(_nth: string) {
   // console.log(nodes.map(n => n.name))
 }
 
-com.register(/^nop i3c rename-group (.+)$/, (new_name) => group_rename(o_current_group.get().trim(), new_name.trim()))
-com.register(/^nop i3c rename-group (.+?) to (.+)$/, (old_name, new_name) => group_rename(old_name.trim(), new_name.trim()))
-com.register(/^nop i3c rename-group/, async () => {
-  group_rename(o_current_group.get().trim(), await query())
+com.register(/^nop i3c group-rename (.+)$/, (new_name) => group_rename(o_current_group.get().trim(), new_name.trim()))
+com.register(/^nop i3c group-rename (.+?) to (.+)$/, (old_name, new_name) => group_rename(old_name.trim(), new_name.trim()))
+com.register(/^nop i3c group-rename/, async () => {
+  const cur = o_current_group.get()
+  const n = await query()
+  console.log(`renaming `, cur, n)
+  group_rename(cur, n)
 })
 function group_rename(old: string, _new: string) {
-  if (!old || !_new) return
-  o_groups.mutate(groups => produce(groups, groups => {
-    let ol = groups.get(old)
-    if (groups.has(_new) || !ol) return
-    groups.delete(old)
-    groups.set(_new, ol)
-  }))
+  if (old == null || _new == null || old === _new) return
+  const cur = o_current_group.get()
+  o.transaction(() => {
+    if (cur === old) {
+      o_current_group.set(_new)
+    }
+    o_groups.mutate(groups => produce(groups, groups => {
+      let ol = groups.get(old)
+      if (groups.has(_new) || !ol) return
+      groups.delete(old)
+      groups.set(_new, ol)
+    }))
+  })
 }
 
 function workspace_send_to_group(w: number, group: string) {
@@ -386,10 +393,14 @@ setInterval(() => {
   o_time.set(new Date)
 }, 1000)
 
+console.log(localStorage.pouet)
 function init() {
   setup_mutation_observer(document.body)
 
   document.body.appendChild(<div class={cls_bar}>
+    {$observe(o_groups, groups => {
+      localStorage.pouet = 'hello !!!'
+    })}
     {$observe(o_current_group, (current, old) => {
       if (old === o.NoValue) return
       group_rename(old, current)
