@@ -45,9 +45,13 @@ rule`html, body`({
 const cls_bar = style('bar',
   S.flex.row.alignCenter,
   S.box.fullScreen.background('#3c3c3b').text.color('white'),
-  { padding: '0 4px' },
+  { padding: '0 4px', overflow: 'hidden' },
 )
 
+// How do I know which is the current group ?
+// should probably look at the "visible" workspaces
+// and if their names aren't right then
+const o_current_group = o(localStorage.current_group ?? '')
 
 const o_current_window = o(null as GeomNode | null)
 const o_current_workspace = o(null as Workspace | null)
@@ -56,6 +60,14 @@ const o_workspaces = o(new Map<number, Workspace>())
 const o_windows = o(new Map<number, ConApp>())
 
 const o_groups = o(new Map<string, Set<number>>())
+try {
+  // console.log('trying to rehydrate ', localStorage.last_groups)
+  let prev_groups = new Map(JSON.parse(localStorage.last_groups).map(([k, v]: [string, string[]]) => [k, new Set(v)]))
+  o_groups.set(prev_groups as any)
+  // console.log(prev_groups)
+} catch (e) { console.error(e) }
+
+
 const o_workspace_groups = o_groups.tf(groups => {
   let res = new Map<number, Set<string>>()
   for (let [group, wrks] of groups) {
@@ -79,13 +91,29 @@ const o_groups_display = o.join(o_groups, o_workspaces, o_focused_workspaces_ids
   }) }
 }))
 
-// How do I know which is the current group ?
-// should probably look at the "visible" workspaces
-// and if their names aren't right then
-const o_current_group = o('')
 
 const o_visible_workspaces = o.join(o_groups_display, o_current_group).tf(([disp, group]) => {
   return disp.filter(d => d.name === group)[0].works.filter(w => w.visible)
+})
+
+const o_visible_windows = o.join(o_visible_workspaces, o_current_window).tf(([vis, foc]) => {
+  const w = vis.slice()
+  w.sort((a, b) => {
+    if (a.rect.x < b.rect.x) return -1
+    if (a.rect.x > b.rect.x) return 1
+    return 0
+  })
+  // console.log(w)
+  let nodes = [] as ConApp[]
+  function process(g: GeomNode) {
+    if (g.window && g.type === 'con')
+      nodes.push(g as ConApp)
+    for (let n of g.nodes) {
+      process(n)
+    }
+  }
+  for (let _w of w) process(_w)
+  return nodes
 })
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -307,6 +335,7 @@ const update_tree = o.debounce(function update_tree() {
       if (n.type === 'con' && !!n.window) {
         win.set(n.id, n as any as ConApp)
         if (n.focused) {
+          console.log(n)
           o_current_window.set(n)
         }
       }
@@ -332,7 +361,7 @@ function i3(cmd: string) {
   return window.__rpc('i3', cmd)
 }
 
-window.i3msg = function i3msg(kind: 'window' | 'binding' | 'workspace' | 'output', msg: any) {
+window.i3msg = function i3msg(kind: 'window' | 'binding' | 'workspace' | 'output' | 'reset', msg: any) {
   // console.log('i3-msg', msg)
   // console.log('msg', JSON.stringify(msg))
   if (!msg) return
@@ -374,7 +403,11 @@ window.i3msg = function i3msg(kind: 'window' | 'binding' | 'workspace' | 'output
     } else {
       update_tree()
     }
+  } else if (kind === 'reset') {
+    workspaces_focus_init()
+    update_tree()
   }
+  // console.log(kind, msg)
 
   // console.log('exp', msg.current?.name ?? msg.container?.name)
 }
@@ -399,9 +432,14 @@ function init() {
 
   document.body.appendChild(<div class={cls_bar}>
     {$observe(o_groups, groups => {
-      localStorage.pouet = 'hello !!!'
+      localStorage.last_groups = JSON.stringify(groups, (key, value) => {
+        if (value instanceof Map || value instanceof Set)
+        return [...value]
+        return value
+      })
     })}
     {$observe(o_current_group, (current, old) => {
+      localStorage.current_group = current
       if (old === o.NoValue) return
       group_rename(old, current)
     })}
@@ -433,13 +471,21 @@ function init() {
       // o_current.set('POUET');
       // query().then(r => console.log('result: ', r))
     })}
-    <div class={S.flex.absoluteGrow(1)}>
-      « {o_current_window.tf(w => {
+      {Repeat(o_visible_windows, (o_vis, idx) => <div
+        title={o_vis.tf(v => v.name)}
+        style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'pre'}}
+        class={[S.flex.absoluteGrow(1).alignCenter, {[S.box.background('red')]: o.join(o_current_window, o_vis).tf(([cur, v]) => v.id === cur?.id)}]}
+      >
+        {$click(_ => {
+          i3(`[con_id=${o_vis.get().id}] focus`)
+        })}
+        {idx+1}: {o_vis.tf(v => v.window_properties?.instance)} <span class={S.text.color('grey').size(S.SIZE_VERY_SMALL)}>({o_vis.tf(v => v.name)})</span>
+      </div>)}
+      {/* « {o_current_window.tf(w => {
         // console.log('current : ', w)
         // __rpc('???', w?.name)
         return w?.name ?? '-'
-      })} »
-    </div>
+      })} » */}
     <img src="file:///home/chris/swapp/apps/1811-ipsen-engagements/__dist__/client/android-icon-144x144.png" width="32" height="32"></img>
     <div>{I('calendar-alt-regular')} {o_time.tf(t => dt.format(t))}</div>
   </div>)

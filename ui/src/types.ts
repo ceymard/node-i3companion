@@ -22,7 +22,10 @@ export interface Node {
 }
 
 export interface WindowProperties {
-
+  class: string
+  instance: string
+  title: string
+  transient_for: null | string
 }
 
 export interface GeomNode extends Node {

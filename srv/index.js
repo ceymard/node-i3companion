@@ -73,9 +73,7 @@ class Display {
 
     if (!related) {
 
-      this.window.setDefaultSize(1920, 32)
-      this.window.setResizable(true)
-      this.window.setTypeHint(Gdk.WindowTypeHint.DOCK)
+      this.setDock()
 
       // Only one display keeps the connection open
       const manager = this.webview.getUserContentManager()
@@ -94,8 +92,6 @@ class Display {
 
       // These two lines set the window at the bottom.
       // If nothing is done, it is set at 0, 0, or the top of the screen the bar was launched on.
-      this.window.setGravity(Gdk.Gravity.SOUTH_WEST)
-      this.window.move(0, 1080)
 
       this.window.showAll()
     }
@@ -124,6 +120,14 @@ class Display {
       this.webview.loadUri(url)
     }
 
+  }
+
+  setDock() {
+    this.window.setDefaultSize(1920, 32)
+    this.window.setResizable(true)
+    this.window.setTypeHint(Gdk.WindowTypeHint.DOCK)
+    this.window.setGravity(Gdk.Gravity.SOUTH_WEST)
+    this.window.move(0, 1080)
   }
 
   floatCenter() {
@@ -223,27 +227,45 @@ class Display {
 const main_display = new Display()
 // main_display.show()
 
-
-let i3 = require('i3').createClient()
-i3.on('output', o => {
-  main_display.msg('output', o)
-})
-i3.on('shutdown', d => {
-  main_display.msg('shutdown', d)
-  process.exit(0)
-})
-i3.on('workspace', wk => {
-  // console.log(wk)
-  main_display.msg('workspace', wk)
-})
-i3.on('window', wk => {
-  // console.log(wk)
-  main_display.msg('window', wk)
-})
-i3.on('binding', b => {
-  if (b.binding.command.indexOf('nop i3c') !== 0) return;
-  main_display.msg('binding', b)
-})
+let i3 = null
+function tryI3Client() {
+  try {
+    makeI3Client()
+  } catch (e) {
+    setTimeout(() => tryI3Client(), 50)
+  }
+}
+function makeI3Client() {
+  i3 = require('i3').createClient()
+  i3.on('error', er => {
+    console.error(er)
+  })
+  i3.on('connect', c => {
+    main_display.setDock()
+    main_display.msg('reset', {})
+  })
+  i3.on('output', o => {
+    main_display.msg('output', o)
+  })
+  i3.on('shutdown', d => {
+    console.log('shutdown', d)
+    main_display.msg('shutdown', d)
+    process.exit(0)
+  })
+  i3.on('workspace', wk => {
+    // console.log(wk)
+    main_display.msg('workspace', wk)
+  })
+  i3.on('window', wk => {
+    // console.log(wk)
+    main_display.msg('window', wk)
+  })
+  i3.on('binding', b => {
+    if (b.binding.command.indexOf('nop i3c') !== 0) return;
+    main_display.msg('binding', b)
+  })
+}
+makeI3Client()
 
 // console.log(i3)
 
