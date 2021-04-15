@@ -25,10 +25,13 @@ export interface WindowProperties {
   class: string
   instance: string
   title: string
-  transient_for: null | string
+  transient_for: null | string[]
 }
 
 export interface GeomNode extends Node {
+  parent: number // this is filled by us.
+  visible: boolean
+
   border: 'pixel'
   current_border_width: number
 
@@ -42,7 +45,6 @@ export interface GeomNode extends Node {
   urgent: false
   output: string
   nodes: GeomNode[]
-  visible: boolean
 
   deco_rect: Geometry
   rect: Geometry

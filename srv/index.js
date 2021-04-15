@@ -158,7 +158,6 @@ class Display {
       obj.stdin.end()
     } else if (data.cmd === 'i3.get_tree') {
       i3.tree((err, res) => {
-        // console.log()
         disp.reply(data.id, res, err)
       })
     } else if (data.cmd === 'i3.get_workspaces') {
@@ -208,7 +207,7 @@ class Display {
   }
 
   reply(id, res, err) {
-    // console.log(id, res, err)
+    // console.log('replying', id, res, err)
     if (err != null) {
       this.webview.runJavascript(`__rpc_reply(${id}, null, ${JSON.stringify({error: err, result: res})})`)
       return
@@ -224,25 +223,22 @@ class Display {
 }
 
 
-const main_display = new Display()
+let main_display = null
 // main_display.show()
 
 let i3 = null
-function tryI3Client() {
-  try {
-    makeI3Client()
-  } catch (e) {
-    setTimeout(() => tryI3Client(), 50)
-  }
-}
 function makeI3Client() {
   i3 = require('i3').createClient()
   i3.on('error', er => {
     console.error(er)
   })
+
   i3.on('connect', c => {
+    // main_display.setDock()
+    // we want to give the connection the time to connect to i3 before gtk takes over the thread.
+    main_display = new Display()
     main_display.setDock()
-    main_display.msg('reset', {})
+    setTimeout(main)
   })
   i3.on('output', o => {
     main_display.msg('output', o)
@@ -270,4 +266,3 @@ makeI3Client()
 // console.log(i3)
 
 ///////////////////////////////////////
-main()
