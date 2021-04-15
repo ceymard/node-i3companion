@@ -3,7 +3,7 @@
 	"version": "0.0.1",
 	"private": true,
 	"dependencies": {
-		"elt": "^2.0.0-15",
+		"elt": "^2.0.0-16",
 		"elt-fa": "^0.4.5",
 		"elt-ui": "^0.8.0-8",
 		"esbuild": "^0.11.2",

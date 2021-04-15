@@ -1,5 +1,5 @@
 import { o, $observe } from 'elt'
-import { ConApp, GeomNode, Root, WindowEvent, Workspace, WorkspaceEvent } from './types'
+import { ConApp, GeomNode, Output, Root, WindowEvent, Workspace, WorkspaceEvent } from './types'
 
 import { query } from './query'
 
@@ -64,6 +64,15 @@ export class I3Cmd {
   // Helper observables
   //   A bunch of transforms that help in displaying a some treatments.
 
+  readonly o_outputs = this.o_i3_nodes.tf(nodes => {
+    let res = new Map<string, Output>()
+    for (let n of nodes.values()) {
+      if (n.type !== 'output') continue
+      res.set(n.name, n as Output)
+    }
+    return res
+  })
+
   /** The display groups give the following: group_name -> output_name -> Workspace[] */
   readonly o_display_groups = o.join(this.o_groups, this.o_i3_nodes).tf(([groups, nodes]) => {
     let res: {[group: string]: { [output: string]: Workspace[] }} = {}
@@ -82,7 +91,7 @@ export class I3Cmd {
   })
 
   readonly o_display_groups_show = this.o_display_groups.tf(disp => {
-    return Object.entries(disp).map(([group_name, out]) => {
+    let res = Object.entries(disp).map(([group_name, out]) => {
       return {
         name: group_name,
         outputs: Object.entries(out).map(([name, workspaces]) => {
@@ -90,6 +99,7 @@ export class I3Cmd {
         })
       }
     })
+    return res
   })
 
   /** A map of workpspace_id => Set<group_names> */
@@ -148,13 +158,13 @@ export class I3Cmd {
 
     o.transaction(() => {
       // update current_group
-      if (cur === old_group) this.o_current_group.set(new_group)
       // update groups, removing a reference
       this.o_groups.produce(groups => {
         let ol = groups.get(old_group)!
         groups.delete(old_group)
         groups.set(new_group, ol)
       })
+      if (cur === old_group) this.o_current_group.set(new_group)
     })
   }
 
@@ -170,10 +180,11 @@ export class I3Cmd {
    * @param to_group
    */
   @command(/^nop i3c group-switch (.+?)$/)
+  @command(/^nop i3c group-switch\s*$/, async function () { return [await query()] })
   switchGroup(to_group: string) {
     let cur = this.o_current_group.get()
     if (cur === to_group) return // do nothing if switching to current group
-    this.o_current_group.set(cur)
+    this.o_current_group.set(to_group)
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +192,6 @@ export class I3Cmd {
 
   update_tree = o.debounce(() => {
     window.__rpc('i3.get_tree').then((r: Root) => {
-      console.log(r)
       let nodes = new Map<number, GeomNode>()
 
       let current_workspace_groups = this.o_workspaces_in_groups.get()
@@ -256,12 +266,13 @@ export class I3Cmd {
 
   handleI3Msg(kind: string, msg: any) {
     if (!msg) return
-    console.log(kind, msg.change, msg)
     if (kind === 'window') {
       const _m = msg as WindowEvent
       if (_m.change === 'focus') {
-        this.o_i3_focus_con_id.set(_m.container.id)
-        this.o_i3_nodes.key(_m.container.id).assign(_m.container)
+        o.transaction(() => {
+          this.o_i3_focus_con_id.set(_m.container.id)
+          this.o_i3_nodes.key(_m.container.id).assign(_m.container)
+        })
       } else {
         this.update_tree()
       }
@@ -273,12 +284,12 @@ export class I3Cmd {
     } else if (kind === 'reset') {
       this.update_tree()
     }
-
   }
 
   [E.sym_render]() {
     return <div style={{display: 'none'}}>
       {$observe(this.o_current_group, (cur, old) => {
+        // console.log(cur, old)
         if (old === o.NoValue) return
         this.onCurrentGroupChange(old, cur)
       })}
@@ -301,6 +312,8 @@ export class I3Cmd {
 
   onCurrentGroupChange(old_group: string, new_group: string) {
     let groups = this.o_display_groups.get()
+    // let outputs = this.o_outputs.get()
+    // console.log(new_group, groups, outputs)
     if (!groups[old_group]) return // this was a rename operation.
 
     // this is where we emit all the commands that focus the outputs one by one

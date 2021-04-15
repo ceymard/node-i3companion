@@ -8,7 +8,6 @@ import 'elt-fa/calendar-alt-regular'
 import { $click, $observe, o, Repeat, setup_mutation_observer } from 'elt'
 import { Styling as S, rule, style } from 'elt-ui'
 
-import { ConApp, GeomNode, Root, WindowEvent, Workspace, WorkspaceEvent } from './types'
 import { i3 } from './i3'
 
 // Things to implement
@@ -132,6 +131,7 @@ function init() {
 
   document.body.appendChild(<div class={cls_bar}>
     {i3}
+    {$observe(i3.o_display_groups_show, s => console.log('show', s))}
     {Repeat(i3.o_display_groups_show, o_group => <div class={S.flex.row.alignCenter}>
       <div><span>{o_group.p('name')}</span></div>
       {Repeat(o_group.p('outputs'), o_output => <>
@@ -178,7 +178,10 @@ function init() {
         return w?.name ?? '-'
       })} » */}
     {/* <img src="file:///home/chris/swapp/apps/1811-ipsen-engagements/__dist__/client/android-icon-144x144.png" width="32" height="32"></img> */}
-    <div>{I('calendar-alt-regular')} {o_time.tf(t => dt.format(t))}</div>
+    <div>
+      {I('calendar-alt-regular')}
+      {' '}
+      {o_time.tf(t => dt.format(t))}</div>
   </div>)
 }
 
