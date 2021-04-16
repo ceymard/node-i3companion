@@ -61,6 +61,14 @@ class Display {
       dsp.floatCenter()
       dsp.show()
       dsp.window.setOpacity(0.95)
+
+      let screen = dsp.window.getScreen()
+      let visual = screen.getRgbaVisual()
+      if (visual) {
+        dsp.window.setVisual(visual)
+        console.log('visual !')
+      }
+
       console.log('creating')
       return dsp.webview
     })
@@ -95,7 +103,6 @@ class Display {
 
       this.window.showAll()
     }
-
     // this.initJs()
 
     const settings = this.webview.getSettings()
@@ -259,6 +266,9 @@ function makeI3Client() {
   i3.on('binding', b => {
     if (b.binding.command.indexOf('nop i3c') !== 0) return;
     main_display.msg('binding', b)
+  })
+  i3.on('barconfig_update', b => {
+    main_display.msg('barconfig_update', b)
   })
 }
 makeI3Client()

@@ -5,13 +5,7 @@ import './immerize'
 import { I } from 'elt-fa'
 import 'elt-fa/calendar-alt-regular'
 
-import { $click, $observe, o, Repeat, setup_mutation_observer } from 'elt'
-import { Styling as S, rule, style } from 'elt-ui'
-const th = S.Theme({
-  tint: '#004e7c',
-  fg: '#ffffff',
-  bg: '#1c2c2c',
-})
+import { $click, o, Repeat, setup_mutation_observer } from 'elt'
 
 import { i3 } from './i3'
 
@@ -41,19 +35,6 @@ import { i3 } from './i3'
   - Show the time
 **/
 
-rule`html, body`({
-  width: '100%',
-  height: '100%',
-  fontSize: '60vh',
-  fontFamily: `Ubuntu, "Segoe UI", sans-serif`,
-})
-
-const cls_bar = style('bar',
-  S.flex.row.alignCenter,
-  S.box.fullScreen.background('#3c3c3b').text.color('white'),
-  { padding: '0 4px', overflow: 'hidden' },
-)
-
 /////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// i3 functions /////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -78,24 +59,14 @@ setInterval(() => {
 function init() {
   setup_mutation_observer(document.body)
 
-  document.body.appendChild(<div class={[cls_bar, th.own_class]}>
-    {i3}
+  document.body.appendChild(<div class='bar'>
     {/* {$observe(i3.o_display_groups_show, s => console.log('show', s))} */}
-    {Repeat(i3.o_display_groups_show, o_group => <div class={S.flex.row.alignCenter}>
-      <div><span>{o_group.p('name')}</span></div>
+    {Repeat(i3.o_display_groups_show, o_group => <div class='workspace-list'>
+      <div class='group-name'>{o_group.p('name')}</div>
       {Repeat(o_group.p('outputs'), o_output => <>
         {Repeat(o_output.p('workspaces'), o_work => <div
-          class={S.box.padding(2).text.centered}
-          style={{
-            width: '42px',
-            height: '32px',
-            lineHeight: '32px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'pre',
-            // height: '100%',
-            background: o_work.tf(w => w.urgent ? 'red' : w.visible ? th.tint : 'none')
-          }}>
+            class={['workspace', {urgent: o_work.p('urgent'), visible: o_work.p('visible')}]}
+          >
             {$click(async _ => {
               try {
                 // console.log(`workspace "${o_work.get().name}"`)
@@ -114,26 +85,30 @@ function init() {
       // o_current.set('POUET');
       // query().then(r => console.log('result: ', r))
     })}
+    <div class="windows">
       {Repeat(i3.o_current_windows, (o_vis, idx) => <div
+        class={['window', {focused: o_vis.p('focused'), urgent: o_vis.p('urgent')}]}
         title={o_vis.tf(v => v.name)}
-        style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'pre', height: '100%', lineHeight: '32px', padding: '0 4px'}}
-        class={[S.flex.absoluteGrow(1).alignCenter, {[S.box.background(th.tint)]: o_vis.p('focused')}]}
       >
         {$click(_ => {
           i3.cmd(`[con_id=${o_vis.get().id}] focus`)
         })}
-        {idx+1}: {o_vis.tf(v => v.window_properties?.instance)} <span class={S.text.color('grey').size(S.SIZE_VERY_SMALL)}>({o_vis.tf(v => v.name)})</span>
+        <span class='number'>{idx+1}: </span>
+        <span class='class'>{o_vis.tf(v => v.window_properties?.instance)}</span>
+        <span class='title'>{o_vis.tf(v => v.name)}</span>
       </div>)}
+    </div>
       {/* « {o_current_window.tf(w => {
         // console.log('current : ', w)
         // __rpc('???', w?.name)
         return w?.name ?? '-'
       })} » */}
     {/* <img src="file:///home/chris/swapp/apps/1811-ipsen-engagements/__dist__/client/android-icon-144x144.png" width="32" height="32"></img> */}
-    <div class={S.text.size(S.SIZE_SMALL).box.padding(4)}>
+    <div class='date'>
       {I('calendar-alt-regular')}
       {' '}
       {o_time.tf(t => dt.format(t))}</div>
+    {i3}
   </div>)
 }
 

@@ -206,6 +206,18 @@ export class I3Cmd {
     this.o_current_group.set(to_group)
   }
 
+  @command(/^nop i3c reload-style/)
+  reloadStyle() {
+    let link = document.querySelector('link[rel="stylesheet"]')
+    if (!link) return
+    let l = link as HTMLLinkElement
+    l.parentNode!.removeChild(link)
+    l.href = l.href.replace(/(\?.+)?$/, `?${new Date().valueOf()}`)
+    requestAnimationFrame(() => {
+      document.head.appendChild(l)
+    })
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////////
   // Updates
 

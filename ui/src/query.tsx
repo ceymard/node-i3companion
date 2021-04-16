@@ -20,8 +20,6 @@ export function query(opts?: {}): Promise<string> {
   })
 
   var doc = w.document
-  w.document.body.style.background = 'rgba(0, 0, 0, 1)'
-  w.document.body.style.color = 'rgba(255, 255, 255, 1)'
 
   w.addEventListener('beforeunload', () => {
     if (!accepted) _reject(`canceled`)
@@ -31,10 +29,15 @@ export function query(opts?: {}): Promise<string> {
   w.__init = function () {
     w.__rpc('show')
   }
+
+  let link = document.querySelector('link[rel="stylesheet"]')! as HTMLLinkElement
+
   if (doc) {
     setup_mutation_observer(doc)
+    doc.head.appendChild(<link rel="stylesheet" href={link.href}/>)
+    doc.body.classList.add('dialog')
     doc.body.appendChild(<>
-      <input class={S.box.fullWidth}>
+      <input class='main_input'>
         {$bind.string(o_result)}
         {$on('keypress', ev => {
           if (ev.code === 'Enter') {
@@ -44,15 +47,6 @@ export function query(opts?: {}): Promise<string> {
         })}
         {node => { requestAnimationFrame(() => { node.focus() }) }}
       </input>
-      <pre class={S.text.preWrap}>
-        {$click(_ => {
-          w?.close()
-        })}
-        {/* {o_workspaces.tf(w => JSON.stringify([...(w.values())].map(w => [w.name])))} */}
-      </pre>
-      <pre>
-        {/* {o_focused_workspaces.tf(f => JSON.stringify(f))} */}
-      </pre>
     </>)
     doc.addEventListener('keydown', k => {
       // w.__rpc('keydown-popup', {})

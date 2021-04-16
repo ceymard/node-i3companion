@@ -3,10 +3,17 @@ reset=$(shell echo "\033[0m")
 
 FLAGS = --bundle --error-limit=0 --platform=browser --target=es2017 --define:'process.env.NODE_ENV="production"'
 
-.PHONY: all clean appjs appjsminified appjswatch
+.PHONY: all clean appjs appjsminified appjswatch sass
 
 # Par défaut, on construit le code de débug
-all: appjs
+all: appjs sass
+
+sass:
+	./node_modules/.bin/sass styles/main.sass:styles/main.css
+
+sass-watch:
+	./node_modules/.bin/sass --watch styles/main.sass:styles/main.css
+
 
 # Nuke du __dist, on repart de zéro.
 clean:
