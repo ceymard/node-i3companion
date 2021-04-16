@@ -31,6 +31,7 @@ function command<U extends any[]>(regexp: RegExp, intercept?: (this: I3Cmd, ...a
   }
 }
 
+let wrk_id = 100
 /**
  *
  */
@@ -139,6 +140,24 @@ export class I3Cmd {
     if (!windows.length) return
     nth = Math.min(windows.length, Math.max(nth, 1)) - 1
     this.cmd(`[con_id=${windows[nth].id}] focus`)
+  }
+
+  @command(/^nop i3c nth-workspace (\d+)/)
+  focusNthWorkspace(_nth: string) {
+    let nth = parseInt(_nth)
+    if (!Number.isSafeInteger(nth)) return
+
+    let current = this.o_current_group.get()
+    let workspaces = [...(this.o_groups.get().get(current) ?? [])]
+    if (!workspaces.length) return
+
+    nth = Math.min(workspaces.length, Math.max(nth, 1)) - 1
+    const node = this.o_i3_nodes.get().get(workspaces[nth])
+    if (!node) {
+      this.cmd(`workspace "${wrk_id++}"`)
+    } else {
+      this.cmd(`workspace "${node.name}"`)
+    }
   }
 
   /**
@@ -312,10 +331,24 @@ export class I3Cmd {
 
   onCurrentGroupChange(old_group: string, new_group: string) {
     let groups = this.o_display_groups.get()
-    // let outputs = this.o_outputs.get()
+    let outputs = this.o_outputs.get()
+    let nodes = this.o_i3_nodes.get()
     // console.log(new_group, groups, outputs)
     if (!groups[old_group]) return // this was a rename operation.
 
+    for (let [output_name, output] of outputs) {
+      // get the list of workspaces in this group
+      let wkrs = new Set(groups[new_group]?.[output_name]?.map(w => w.id) ?? [])
+      let output_wkrs = output.nodes.filter(n => n.name === 'content')[0].focus.filter(f => wkrs.has(f))
+      this.cmd(`output "${output_name}"`)
+      if (output_wkrs.length > 0) {
+        this.cmd(`workspace "${nodes.get(output_wkrs[0])!.name}"`)
+      } else {
+        // there was no previous workspace, so we need to create one.
+        this.cmd(`workspace ${wrk_id++}`)
+      }
+    }
+    // console.log(groups)
     // this is where we emit all the commands that focus the outputs one by one
     // and try to find a usable workspace or creates one.
 

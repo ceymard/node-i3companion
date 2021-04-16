@@ -7,6 +7,11 @@ import 'elt-fa/calendar-alt-regular'
 
 import { $click, $observe, o, Repeat, setup_mutation_observer } from 'elt'
 import { Styling as S, rule, style } from 'elt-ui'
+const th = S.Theme({
+  tint: '#004e7c',
+  fg: '#ffffff',
+  bg: '#1c2c2c',
+})
 
 import { i3 } from './i3'
 
@@ -49,61 +54,6 @@ const cls_bar = style('bar',
   { padding: '0 4px', overflow: 'hidden' },
 )
 
-/*
-com.register(/^nop i3c group-rename (.+)$/, (new_name) => group_rename(o_current_group.get().trim(), new_name.trim()))
-com.register(/^nop i3c group-rename (.+?) to (.+)$/, (old_name, new_name) => group_rename(old_name.trim(), new_name.trim()))
-com.register(/^nop i3c group-rename/, async () => {
-  const cur = o_current_group.get()
-  const n = await query()
-  // console.log(`renaming `, cur, n)
-  group_rename(cur, n)
-})
-
-function group_rename(old: string, _new: string) {
-  if (old == null || _new == null || old === _new) return
-  const cur = o_current_group.get()
-  o.transaction(() => {
-    if (cur === old) {
-      o_current_group.set(_new)
-    }
-    o_groups.mutate(groups => produce(groups, groups => {
-      let ol = groups.get(old)
-      if (groups.has(_new) || !ol) return
-      groups.delete(old)
-      groups.set(_new, ol)
-    }))
-  })
-}
-
-function workspace_send_to_group(w: number, group: string) {
-  o_groups.mutate(groups => produce(groups, groups => {
-    // we first remove the window from all the groups
-    for (let g of groups.values())
-      g.delete(w)
-    // create the group if it didn't exist
-    if (!groups.has(group)) groups.set(group, new Set())
-    // add the workspace to the group
-    groups.get(group)!.add(w)
-  }))
-  //
-}
-
-// Assign a workspace to another group
-function workspace_assign_to_group(w: number, group: string) {
-  o_groups.mutate(groups => produce(groups, groups => {
-    // create the group if it didn't exist
-    if (!groups.has(group)) groups.set(group, new Set())
-    // add the workspace to the group
-    groups.get(group)!.add(w)
-  }))
-}
-
-// Send a window to the current workspace
-function con_send_to_workspace(c: number, w: string) {
-  window.__rpc('i3', `[id=${c}] move container to workspace "${w}"`)
-}
-*/
-
 /////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// i3 functions /////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -125,24 +75,26 @@ setInterval(() => {
   o_time.set(new Date)
 }, 1000)
 
-console.log(localStorage.pouet)
 function init() {
   setup_mutation_observer(document.body)
 
-  document.body.appendChild(<div class={cls_bar}>
+  document.body.appendChild(<div class={[cls_bar, th.own_class]}>
     {i3}
-    {$observe(i3.o_display_groups_show, s => console.log('show', s))}
+    {/* {$observe(i3.o_display_groups_show, s => console.log('show', s))} */}
     {Repeat(i3.o_display_groups_show, o_group => <div class={S.flex.row.alignCenter}>
       <div><span>{o_group.p('name')}</span></div>
       {Repeat(o_group.p('outputs'), o_output => <>
         {Repeat(o_output.p('workspaces'), o_work => <div
-          class={S.box.padding(2).borderRound.border('#5c5b5c').text.centered}
+          class={S.box.padding(2).text.centered}
           style={{
             width: '42px',
+            height: '32px',
+            lineHeight: '32px',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'pre',
-            background: o_work.tf(w => w.urgent ? 'red' : w.visible ? '#4c3d7c' : 'none')
+            // height: '100%',
+            background: o_work.tf(w => w.urgent ? 'red' : w.visible ? th.tint : 'none')
           }}>
             {$click(async _ => {
               try {
@@ -164,8 +116,8 @@ function init() {
     })}
       {Repeat(i3.o_current_windows, (o_vis, idx) => <div
         title={o_vis.tf(v => v.name)}
-        style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'pre'}}
-        class={[S.flex.absoluteGrow(1).alignCenter, {[S.box.background('red')]: o_vis.p('focused')}]}
+        style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'pre', height: '100%', lineHeight: '32px', padding: '0 4px'}}
+        class={[S.flex.absoluteGrow(1).alignCenter, {[S.box.background(th.tint)]: o_vis.p('focused')}]}
       >
         {$click(_ => {
           i3.cmd(`[con_id=${o_vis.get().id}] focus`)
@@ -178,7 +130,7 @@ function init() {
         return w?.name ?? '-'
       })} » */}
     {/* <img src="file:///home/chris/swapp/apps/1811-ipsen-engagements/__dist__/client/android-icon-144x144.png" width="32" height="32"></img> */}
-    <div>
+    <div class={S.text.size(S.SIZE_SMALL).box.padding(4)}>
       {I('calendar-alt-regular')}
       {' '}
       {o_time.tf(t => dt.format(t))}</div>
