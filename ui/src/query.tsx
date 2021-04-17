@@ -1,10 +1,13 @@
-import { o, setup_mutation_observer, $bind, $on, $click } from 'elt'
-import { Styling as S } from 'elt-ui'
+import { o, setup_mutation_observer, $bind, $on, $click, Renderable, Repeat, If } from 'elt'
 
 
 let current_window: Window | null = null
 
-export function query(opts?: {}): Promise<string> {
+export function query(opts?: {
+  title?: o.RO<Renderable>,
+  text?: o.RO<Renderable>,
+  list?: o.RO<Renderable[]>,
+}): Promise<string> {
   const w = window.open("", undefined, "status=yes")
 
   const o_result = o('')
@@ -37,6 +40,8 @@ export function query(opts?: {}): Promise<string> {
     doc.head.appendChild(<link rel="stylesheet" href={link.href}/>)
     doc.body.classList.add('dialog')
     doc.body.appendChild(<>
+      {If(opts?.title, o_title => <h1>{o_title}</h1>)}
+      {If(opts?.text, o_text => <div class="text">{o_text}</div>)}
       <input class='main_input'>
         {$bind.string(o_result)}
         {$on('keypress', ev => {
@@ -47,6 +52,9 @@ export function query(opts?: {}): Promise<string> {
         })}
         {node => { requestAnimationFrame(() => { node.focus() }) }}
       </input>
+      {If(opts?.list, o_list => <div class='entries'>
+        {Repeat(o_list, o_item => <div class='entry'>{o_item}</div>)}
+      </div>)}
     </>)
     doc.addEventListener('keydown', k => {
       // w.__rpc('keydown-popup', {})

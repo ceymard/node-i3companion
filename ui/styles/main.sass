@@ -1,0 +1,118 @@
+@use "./reset"
+
+$background: #3c3c4b
+$tint: #004e7c
+// $tint: #ff9988
+$fg: white
+$padding: 0 8px
+
+html, body, .bar, .dialog
+  width: 100vw
+  height: 100vh
+  font-size: 50vh
+  font-family: Ubuntu, sans-serif
+
+.dialog, .bar
+  color: $fg
+  background: $background
+
+.dialog
+  font-size: 16px
+  // padding: 16px
+  border: 2px solid lighten($background, 30)
+  border-radius: 3px
+  display: flex
+  flex-direction: column
+
+  .entries
+    flex-grow: 1
+    flex-basis: 0
+    overflow-y: scroll
+
+  .text
+    padding: 8px
+    color: rgba(255, 255, 255, 0.5)
+
+  input
+    border: none
+    background: rgba(255, 255, 255, 0.07)
+    color: $fg
+    width: 100%
+    padding: 8px 16px
+    font-size: 1.5em
+
+
+.bar
+  display: flex
+  flex-direction: row
+  align-items: center
+  overflow: hidden
+  // padding: 0 8px
+
+  & > * + *
+    margin-left: 16px
+
+.workspace-list
+  display: flex
+  flex-direction: row
+  align-items: center
+  position: relative
+  height: 100vh
+  padding: 2px 8px
+  background: darken($tint, 10)
+  font-family: "Ubuntu Mono", monospace
+
+  & > .group-name
+    font-weight: bold
+    height: 80vh
+    line-height: 80vh
+    margin-right: 4px
+
+.workspace
+  border-radius: 3px
+  height: 80vh
+  line-height: 80vh
+  overflow: hidden
+  max-width: 52px
+  text-overflow: ellipsis
+  white-space: pre
+  padding: $padding
+  font-size: 0.8em
+  font-weight: bold
+  background: rgba(255, 255, 255, 0.07)
+  margin-left: 4px
+
+  &.visible
+    background: $tint
+
+.windows
+  flex-basis: 0
+  flex-grow: 1
+  // display: inline-flex
+  display: grid
+  // grid-template-columns: min-content
+  grid-auto-flow: column
+  // flex-direction: row
+
+.window
+  // display: table-cell
+  padding: $padding
+  overflow: hidden
+  text-overflow: ellipsis
+  white-space: pre
+  height: 100vh
+  line-height: 100vh
+  flex-grow: 1
+  flex-basis: 0
+
+  & > .title
+    color: darken($fg, 50)
+    font-size: 0.8em
+    &:before
+      content: " ("
+    &:after
+      content: ")"
+
+  &.focused
+    // font-weight: bold
+    background: $tint

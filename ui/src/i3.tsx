@@ -167,7 +167,9 @@ export class I3Cmd {
    */
   @command(/^nop i3c group-rename (.+?) to (.+)$/, (old_name, new_name) => [old_name.trim(), new_name.trim()])
   @command(/^nop i3c group-rename (.+)$/, function (new_name) { return [this.o_current_group.get(), new_name] })
-  @command(/^nop i3c group-rename/, async function () { return [this.o_current_group.get(), await query()] })
+  @command(/^nop i3c group-rename/, async function () { return [this.o_current_group.get(), await query({
+    text: `Enter the new group name :`
+  })] })
   renameGroup(old_group: string, new_group: string) {
     let cur = this.o_current_group.get()
     let groups = this.o_groups.get()
@@ -199,7 +201,10 @@ export class I3Cmd {
    * @param to_group
    */
   @command(/^nop i3c group-switch (.+?)$/)
-  @command(/^nop i3c group-switch\s*$/, async function () { return [await query()] })
+  @command(/^nop i3c group-switch\s*$/, async function () { return [await query({
+    text: `Select a group or enter the name of a new one :`,
+    list: [...this.o_groups.get().keys()]
+  })] })
   switchGroup(to_group: string) {
     let cur = this.o_current_group.get()
     if (cur === to_group) return // do nothing if switching to current group
@@ -343,12 +348,31 @@ export class I3Cmd {
 
   onCurrentGroupChange(old_group: string, new_group: string) {
     let groups = this.o_display_groups.get()
+    let vis = this.o_i3_focus_workspaces_id.get()
     let outputs = this.o_outputs.get()
     let nodes = this.o_i3_nodes.get()
     // console.log(new_group, groups, outputs)
     if (!groups[old_group]) return // this was a rename operation.
 
+    let groups_ids = this.o_groups.get()
+    for (let wid of groups_ids.get(old_group)!) {
+      let nw = nodes.get(wid)
+      // Rename old workspaces to group::_their name
+      this.cmd(`rename workspace "${nw!.name}" to "${old_group}::${nw!.name}"`)
+    }
+
+    rename_new_workspace: {
+      let newg = groups_ids.get(new_group)
+      if (!newg) break rename_new_workspace
+      for (let wid of newg) {
+
+      }
+    }
+
     for (let [output_name, output] of outputs) {
+      // The current workspace name
+      let current = nodes.get(vis.get(output_name)!)!.name
+
       // get the list of workspaces in this group
       let wkrs = new Set(groups[new_group]?.[output_name]?.map(w => w.id) ?? [])
       let output_wkrs = output.nodes.filter(n => n.name === 'content')[0].focus.filter(f => wkrs.has(f))
