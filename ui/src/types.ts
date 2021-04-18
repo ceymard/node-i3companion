@@ -17,6 +17,11 @@ declare global {
 export interface Node {
   id: number
   name: string
+  label: string // for workspaces
+
+  groups?: Set<string>
+  is_current_group?: boolean
+
   output: string
   type: string
 }
@@ -68,7 +73,9 @@ export interface Output extends GeomNode {
 
 export interface Workspace extends GeomNode {
   type: 'workspace'
+  order: number
   visible: boolean
+  groups: Set<string>
 }
 
 export interface Con extends GeomNode {

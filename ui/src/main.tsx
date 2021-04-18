@@ -77,7 +77,7 @@ function init() {
               _.stopPropagation()
 
             })}
-            {o_work.p('name')}
+            {o_work.p('label')}
         </div>)}
       </>)}
     </div>)}

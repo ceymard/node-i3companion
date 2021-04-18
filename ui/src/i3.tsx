@@ -40,10 +40,10 @@ export class I3Cmd {
   // All o_i3_* observables are updated by i3 events and should not be modified manually.
 
   // The current group
-  readonly o_current_group = o('-')
+  readonly o_current_group = o('')
 
   // This observable is 100% managed by this application and is not dependent on i3
-  readonly o_groups = o(new Map<string, Set<number>>())
+  // readonly o_groups = o(new Map<string, Set<number>>())
 
   //////////////////////////////////////////////////////
   // Nodes are updated by update_tree.
@@ -51,6 +51,27 @@ export class I3Cmd {
   // The only change between what we store here and what we receive from i3 is that
   // we keep track of the parent (that i3 doesn't give us) and of the focus for the workspaces.
   readonly o_i3_nodes = o(new Map<number, GeomNode>())
+
+  readonly o_i3_workspaces = this.o_i3_nodes.tf(nodes => {
+    let res: Workspace[] = []
+    for (let n of nodes.values())
+      if (n.type === 'workspace')
+        res.push(n as Workspace)
+    return res
+  })
+
+  // groups
+  readonly o_groups = this.o_i3_nodes.tf(nodes => {
+    let m = new Map<string, Set<number>>()
+    for (let n of nodes.values()) {
+      if (n.type !== 'workspace' || !n.groups) continue
+      for (let g of n.groups) {
+        if (!m.has(g)) m.set(g, new Set())
+        m.get(g)!.add(n.id)
+      }
+    }
+    return m
+  })
 
   /////////////////////////////////////////////////////////////////
   // Focus tracking is done manually
@@ -173,18 +194,24 @@ export class I3Cmd {
   renameGroup(old_group: string, new_group: string) {
     let cur = this.o_current_group.get()
     let groups = this.o_groups.get()
+    let wrk = this.o_i3_workspaces.get()
 
     // don't do anything
     if (!groups.has(old_group) || groups.has(new_group)) return
 
+    let commands: string[] = []
     o.transaction(() => {
-      // update current_group
-      // update groups, removing a reference
-      this.o_groups.produce(groups => {
-        let ol = groups.get(old_group)!
-        groups.delete(old_group)
-        groups.set(new_group, ol)
-      })
+      for (let n of wrk.values()) {
+        if (n.groups.has(old_group)) {
+          let s = new Set([...n.groups])
+          s.delete(old_group)
+          s.add(new_group)
+          if (n.is_current_group) n.groups.add(cur)
+          let cmd = `rename workspace "${n.name}" to "${!n.is_current_group ? ':::' : ''}${n.label}::${[...s].join(',')}"`
+          commands.push(cmd)
+        }
+      }
+      this.cmd(commands.join('; '))
       if (cur === old_group) this.o_current_group.set(new_group)
     })
   }
@@ -208,6 +235,11 @@ export class I3Cmd {
   switchGroup(to_group: string) {
     let cur = this.o_current_group.get()
     if (cur === to_group) return // do nothing if switching to current group
+    let wrk = this.o_i3_workspaces.get()
+    for (let w of wrk) {
+
+    }
+
     this.o_current_group.set(to_group)
   }
 
@@ -230,16 +262,14 @@ export class I3Cmd {
     window.__rpc('i3.get_tree').then((r: Root) => {
       let nodes = new Map<number, GeomNode>()
 
-      let current_workspace_groups = this.o_workspaces_in_groups.get()
-      let curgroup = this.o_current_group.get() // all new workspaces that we haven't seen get into the current group
-      let groups = new Map<string, Set<number>>() // the new groups
-      let current_group = new Set<number>()
-      groups.set(curgroup, current_group)
+      // let current_workspace_groups = this.o_workspaces_in_groups.get()
+      let curgroup = this.o_current_group.get() ?? '' // all new workspaces that we haven't seen get into the current group
 
       const process = (n: GeomNode, parent: number | null, is_visible = false, keep_first = false) => {
         let id = n.id
         // We always add the node.
         nodes.set(n.id, n)
+        n.label = n.type === 'workspace' ? n.name.replace(/(^:::)|(::.*$)/g, '') : n.name
 
         // console.log(n.type, n.name, is_visible, keep_first)
         // Our added attributes
@@ -254,18 +284,24 @@ export class I3Cmd {
         // Ignore __i3 ?
         if (n.name === '__i3') return
         if (n.type === 'workspace') {
-          let cg = current_workspace_groups.get(id)
-          if (cg) {
+          let match = /(?::::)?(?:(?!::).)+(?:::([^]*))?$/.exec(n.name)
+          n.groups = new Set()
+          if (match?.[1]) m: {
+            let _groups = match[1]
             // this workspace was already part of some groups, so it is added back to them.
-            for (let g of cg) {
-              if (!groups.has(g)) groups.set(g, new Set())
-              groups.get(g)!.add(id)
+            for (let g of _groups.split(',')) {
+              if (!curgroup) {
+                curgroup = g
+                this.o_current_group.set(g)
+              }
+              if (g === curgroup) n.is_current_group = true
+              n.groups.add(g)
             }
           } else {
             // we didn't know this workspace, so it goes into the default group.
-            current_group.add(id)
+            n.is_current_group = true
+            if (curgroup) n.groups.add(curgroup)
           }
-          // need to check if workspace was already part of a group
         }
         if (n.type === 'con' && !!n.window) {
           if (n.focused) {
@@ -284,13 +320,19 @@ export class I3Cmd {
           }
           process(c, n.id, first, keep_first || n.type === 'workspace')
         }
+
+        if (n.name === 'content' && n.type === 'con') {
+          var i = 0
+          for (let f of n.focus) {
+            let nw = nodes.get(f) as Workspace | undefined
+            if (!nw) continue
+            nw.order = i++
+          }
+        }
       }
       process(r, null)
 
-      o.transaction(() => {
-        this.o_i3_nodes.set(nodes)
-        this.o_groups.set(groups)
-      })
+      this.o_i3_nodes.set(nodes)
     }, e => {
       console.error(e)
     })
@@ -298,6 +340,7 @@ export class I3Cmd {
 
   cmd(cmd: string) {
     return window.__rpc('i3', cmd)
+      .then(r => { console.log(r); return r })
   }
 
   handleI3Msg(kind: string, msg: any) {
@@ -347,47 +390,53 @@ export class I3Cmd {
   }
 
   onCurrentGroupChange(old_group: string, new_group: string) {
-    let groups = this.o_display_groups.get()
-    let vis = this.o_i3_focus_workspaces_id.get()
-    let outputs = this.o_outputs.get()
-    let nodes = this.o_i3_nodes.get()
-    // console.log(new_group, groups, outputs)
-    if (!groups[old_group]) return // this was a rename operation.
+    let works = this.o_i3_workspaces.get()
 
-    let groups_ids = this.o_groups.get()
-    for (let wid of groups_ids.get(old_group)!) {
-      let nw = nodes.get(wid)
-      // Rename old workspaces to group::_their name
-      this.cmd(`rename workspace "${nw!.name}" to "${old_group}::${nw!.name}"`)
-    }
+    let currently_visible = new Map<string, Workspace>()
+    let replacements = new Map<string, Workspace>()
+    let commands: string[] = []
 
-    rename_new_workspace: {
-      let newg = groups_ids.get(new_group)
-      if (!newg) break rename_new_workspace
-      for (let wid of newg) {
+    // rename all the workspaces
+    for (let w of works) {
+      if (w.visible) currently_visible.set(w.output, w)
 
-      }
-    }
+      if (w.groups.has(new_group)) {
 
-    for (let [output_name, output] of outputs) {
-      // The current workspace name
-      let current = nodes.get(vis.get(output_name)!)!.name
+        {
+          let repl = replacements.get(w.output)
+          if (!repl || repl.order > w.order) {
+            replacements.set(w.output, w)
+          }
+        }
 
-      // get the list of workspaces in this group
-      let wkrs = new Set(groups[new_group]?.[output_name]?.map(w => w.id) ?? [])
-      let output_wkrs = output.nodes.filter(n => n.name === 'content')[0].focus.filter(f => wkrs.has(f))
-      this.cmd(`output "${output_name}"`)
-      if (output_wkrs.length > 0) {
-        this.cmd(`workspace "${nodes.get(output_wkrs[0])!.name}"`)
+        if (!w.is_current_group) {
+          // rename the workspace to remove its leading ':::'
+          let other = `${w.label}::${[...w.groups].join(',')}`
+          this.cmd(`rename workspace "${w.name}" to "${other}"`)
+        }
       } else {
-        // there was no previous workspace, so we need to create one.
-        this.cmd(`workspace ${wrk_id++}`)
+        // this workspace was already not visible, no need to change its name, nor to probe if it should be displayed.
+        if (!w.is_current_group) continue
+
+        let other = `:::${w.label}::${[...w.groups].join(',')}`
+        this.cmd(`rename workspace "${w.name}" to "${other}"`)
       }
     }
-    // console.log(groups)
-    // this is where we emit all the commands that focus the outputs one by one
-    // and try to find a usable workspace or creates one.
 
+    for (let [output, visible] of currently_visible) {
+      this.cmd(`output "${output}"`)
+      let repl = replacements.get(output)
+      if (repl) {
+        this.cmd(`workspace "${repl.label}::${[...repl.groups].join(',')}"`)
+      } else {
+        this.cmd(`workspace "${visible.label}"`)
+      }
+    }
+    // console.log(commands)
+
+    // this.cmd(commands.join(' ; ')).then(c => {
+    //   console.log('res:', c)
+    // })
   }
 
 
