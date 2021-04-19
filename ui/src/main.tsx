@@ -61,7 +61,7 @@ function init() {
 
   document.body.appendChild(<div class='bar'>
     {/* {$observe(i3.o_display_groups_show, s => console.log('show', s))} */}
-    {Repeat(i3.o_display_groups_show, o_group => <div class='workspace-list'>
+    {Repeat(o.join(i3.o_display_groups_show, i3.o_current_group).tf(([groups, cur]) => groups.filter(g => g.name === cur)), o_group => <div class='workspace-list'>
       <div class='group-name'>{o_group.p('name')}</div>
       {Repeat(o_group.p('outputs'), o_output => <>
         {Repeat(o_output.p('workspaces'), o_work => <div

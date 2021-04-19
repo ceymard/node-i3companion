@@ -30,8 +30,14 @@ html, body, .bar, .dialog
     overflow-y: scroll
 
   .text
-    padding: 8px
+    padding: 8px 16px
     color: rgba(255, 255, 255, 0.5)
+
+  .entry
+    padding: 8px 16px
+
+    &.selected
+      background: $tint
 
   input
     border: none
@@ -49,13 +55,13 @@ html, body, .bar, .dialog
   overflow: hidden
   // padding: 0 8px
 
-  & > * + *
-    margin-left: 16px
+  // & > * + *
+  //   margin-left: 16px
 
 .workspace-list
   display: flex
   flex-direction: row
-  align-items: center
+  align-items: baseline
   position: relative
   height: 100vh
   padding: 2px 8px
@@ -64,6 +70,8 @@ html, body, .bar, .dialog
 
   & > .group-name
     font-weight: bold
+    text-transform: uppercase
+    font-size: 0.6em
     height: 80vh
     line-height: 80vh
     margin-right: 4px

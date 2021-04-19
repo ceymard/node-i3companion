@@ -234,12 +234,7 @@ export class I3Cmd {
   })] })
   switchGroup(to_group: string) {
     let cur = this.o_current_group.get()
-    if (cur === to_group) return // do nothing if switching to current group
-    let wrk = this.o_i3_workspaces.get()
-    for (let w of wrk) {
-
-    }
-
+    if (cur === to_group || !to_group) return // do nothing if switching to current group
     this.o_current_group.set(to_group)
   }
 
@@ -340,7 +335,7 @@ export class I3Cmd {
 
   cmd(cmd: string) {
     return window.__rpc('i3', cmd)
-      .then(r => { console.log(r); return r })
+      // .then(r => { console.log(r); return r })
   }
 
   handleI3Msg(kind: string, msg: any) {
@@ -394,7 +389,6 @@ export class I3Cmd {
 
     let currently_visible = new Map<string, Workspace>()
     let replacements = new Map<string, Workspace>()
-    let commands: string[] = []
 
     // rename all the workspaces
     for (let w of works) {
