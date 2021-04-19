@@ -8,6 +8,7 @@ import 'elt-fa/calendar-alt-regular'
 import { $click, o, Repeat, setup_mutation_observer } from 'elt'
 
 import { i3 } from './i3'
+import { query } from './query'
 
 // Things to implement
 // input module
@@ -62,7 +63,12 @@ function init() {
   document.body.appendChild(<div class='bar'>
     {/* {$observe(i3.o_display_groups_show, s => console.log('show', s))} */}
     {Repeat(o.join(i3.o_display_groups_show, i3.o_current_group).tf(([groups, cur]) => groups.filter(g => g.name === cur)), o_group => <div class='workspace-list'>
-      <div class='group-name'>{o_group.p('name')}</div>
+      <div class='group-name'>
+        {$click(_ => {
+          i3.queryOtherGroup().then(g => i3.switchGroup(g))
+        })}
+        {o_group.p('name')}
+      </div>
       {Repeat(o_group.p('outputs'), o_output => <>
         {Repeat(o_output.p('workspaces'), o_work => <div
             class={['workspace', {urgent: o_work.p('urgent'), visible: o_work.p('visible')}]}

@@ -77,6 +77,8 @@ export class I3Cmd {
   // Focus tracking is done manually
   // The screen with the focus output_id
   readonly o_i3_focus_screen_id = o(-1)
+
+  readonly o_i3_last_group = o('')
   // a Map of output_name -> workspace.id
   readonly o_i3_focus_workspaces_id = o(new Map<string, number>())
   // the con that has the focus. There can be only one.
@@ -228,14 +230,22 @@ export class I3Cmd {
    * @param to_group
    */
   @command(/^nop i3c group-switch (.+?)$/)
-  @command(/^nop i3c group-switch\s*$/, async function () { return [await query({
-    text: `Select a group or enter the name of a new one :`,
-    list: [...this.o_groups.get().keys()]
-  })] })
+  @command(/^nop i3c group-switch\s*$/, async function () { return [await this.queryOtherGroup()] })
   switchGroup(to_group: string) {
     let cur = this.o_current_group.get()
     if (cur === to_group || !to_group) return // do nothing if switching to current group
     this.o_current_group.set(to_group)
+  }
+
+  queryOtherGroup() {
+    let cur = i3.o_current_group.get()
+    let old = i3.o_i3_last_group.get()
+    let lst = [...i3.o_groups.get().keys()].filter(g => g !== cur && g !== old)
+    if (old) lst.unshift(old)
+    return query({
+      text: `Select a group or enter the name of a new one :`,
+      list: lst
+    })
   }
 
   @command(/^nop i3c reload-style/)
@@ -386,6 +396,7 @@ export class I3Cmd {
 
   onCurrentGroupChange(old_group: string, new_group: string) {
     let works = this.o_i3_workspaces.get()
+    this.o_i3_last_group.set(old_group)
 
     let currently_visible = new Map<string, Workspace>()
     let replacements = new Map<string, Workspace>()
